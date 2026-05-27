@@ -570,28 +570,35 @@ body {
 
 <div class="app">
   <div class="header">
-    <h1>🎨 AI 繪圖提示詞產生器</h1>
-    <p>自訂分類與選項，快速組合高品質 Prompt，一鍵送往 ChatGPT / Gemini 生圖</p>
+    <div class="lang-group" style="justify-content:center;margin-bottom:1rem;">
+      <span class="lang-label" id="uiLangLabel">介面語言：</span>
+      <div class="lang-toggle" id="uiLangToggle">
+        <button data-lang="zh" class="active" onclick="setUiLang('zh')">中文</button>
+        <button data-lang="en" onclick="setUiLang('en')">EN</button>
+      </div>
+    </div>
+    <h1 id="appTitle">🎨 AI 繪圖提示詞產生器</h1>
+    <p id="appSubtitle">自訂分類與選項，快速組合高品質 Prompt，一鍵送往 ChatGPT / Gemini 生圖</p>
   </div>
 
   <!-- Subject -->
   <div class="subject-row">
-    <label>📌 主題：</label>
+    <label id="subjectLabel">📌 主題：</label>
     <input type="text" id="subjectInput" placeholder="例如：一隻穿著太空裝的柯基犬站在月球上" />
   </div>
 
   <!-- Categories -->
   <div class="section">
     <div class="section-header">
-      <div class="section-title"><span class="icon">🧩</span> 提示詞分類</div>
+      <div class="section-title"><span class="icon">🧩</span> <span id="categorySectionTitle">提示詞分類</span></div>
       <div class="lang-group">
-        <span class="lang-label">介面顯示：</span>
+        <span class="lang-label" id="displayLangLabel">介面顯示：</span>
         <div class="lang-toggle" id="displayLangToggle">
           <button data-lang="zh" class="active" onclick="setDisplayLang('zh')">中文</button>
           <button data-lang="en" onclick="setDisplayLang('en')">EN</button>
-          <button data-lang="both" onclick="setDisplayLang('both')">雙語</button>
+          <button data-lang="both" onclick="setDisplayLang('both')" id="displayBothBtn">雙語</button>
         </div>
-        <span class="lang-label" style="margin-left:0.4rem;">輸出語言：</span>
+        <span class="lang-label" id="outputLangLabel" style="margin-left:0.4rem;">輸出語言：</span>
         <div class="lang-toggle" id="outputLangToggle">
           <button data-lang="en" class="active" onclick="setOutputLang('en')">EN</button>
           <button data-lang="zh" onclick="setOutputLang('zh')">中文</button>
@@ -606,20 +613,20 @@ body {
 
   <!-- Generate -->
   <div class="generate-area">
-    <button class="btn-generate" onclick="generatePrompt()">✨ 產生提示詞</button>
-    <button class="btn-random" onclick="randomPick()">🎲 隨機組合</button>
+    <button class="btn-generate" id="generateBtn" onclick="generatePrompt()">✨ 產生提示詞</button>
+    <button class="btn-random" id="randomBtn" onclick="randomPick()">🎲 隨機組合</button>
   </div>
 
   <!-- Output -->
   <div class="output-area" id="outputArea" style="display:none;">
     <div class="output-toolbar">
       <div class="output-toolbar-left">
-        <span class="output-label">📝 產生結果</span>
+        <span class="output-label" id="outputLabel">📝 產生結果</span>
       </div>
       <div class="output-toolbar-right">
-        <button class="btn btn-sm" onclick="copyPrompt()">📋 複製</button>
-        <button class="btn btn-sm btn-gpt" onclick="sendToGPT()">🚀 GPT 生圖</button>
-        <button class="btn btn-sm btn-gemini" onclick="sendToGemini()">💎 Gemini 生圖</button>
+        <button class="btn btn-sm" id="copyBtn" onclick="copyPrompt()">📋 複製</button>
+        <button class="btn btn-sm btn-gpt" id="gptBtn" onclick="sendToGPT()">🚀 GPT 生圖</button>
+        <button class="btn btn-sm btn-gemini" id="geminiBtn" onclick="sendToGemini()">💎 Gemini 生圖</button>
       </div>
     </div>
     <textarea class="output-textarea" id="outputText"></textarea>
@@ -627,12 +634,12 @@ body {
 
   <!-- Danger Zone -->
   <div class="danger-zone">
-    <p>⚠️ 資料儲存於瀏覽器 localStorage，清除瀏覽器資料會遺失。</p>
+    <p id="storageNotice">⚠️ 資料儲存於瀏覽器 localStorage，清除瀏覽器資料會遺失。</p>
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
-      <button class="btn btn-sm" onclick="exportData()">💾 匯出</button>
-      <button class="btn btn-sm" onclick="document.getElementById('importFile').click()">📂 匯入</button>
+      <button class="btn btn-sm" id="exportBtn" onclick="exportData()">💾 匯出</button>
+      <button class="btn btn-sm" id="importBtn" onclick="document.getElementById('importFile').click()">📂 匯入</button>
       <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
-      <button class="btn btn-sm btn-danger" onclick="showResetModal()">🗑️ 一鍵清除</button>
+      <button class="btn btn-sm btn-danger" id="resetBtn" onclick="showResetModal()">🗑️ 一鍵清除</button>
     </div>
   </div>
 </div>
@@ -654,11 +661,11 @@ body {
 <!-- Reset Modal -->
 <div class="modal-overlay" id="resetModal">
   <div class="modal">
-    <h3>⚠️ 確認清除所有資料？</h3>
-    <p>此操作將刪除所有自訂分類、選項與選取記錄，且無法復原。建議先匯出備份。</p>
+    <h3 id="resetModalTitle">⚠️ 確認清除所有資料？</h3>
+    <p id="resetModalBody">此操作將刪除所有自訂分類、選項與選取記錄，且無法復原。建議先匯出備份。</p>
     <div class="modal-actions">
-      <button class="btn btn-sm" onclick="hideModal('resetModal')">取消</button>
-      <button class="btn btn-sm btn-danger" onclick="resetAll()">確認清除</button>
+      <button class="btn btn-sm" id="resetCancelBtn" onclick="hideModal('resetModal')">取消</button>
+      <button class="btn btn-sm btn-danger" id="resetConfirmBtn" onclick="resetAll()">確認清除</button>
     </div>
   </div>
 </div>
@@ -666,16 +673,16 @@ body {
 <!-- Edit Item Modal -->
 <div class="modal-overlay" id="editItemModal">
   <div class="modal">
-    <h3 style="color:var(--accent);">✏️ 編輯選項</h3>
+    <h3 style="color:var(--accent);" id="editItemTitle">✏️ 編輯選項</h3>
     <div class="edit-modal-fields">
-      <label>英文 (EN)</label>
+      <label id="editItemEnLabel">英文 (EN)</label>
       <input type="text" id="editItemEn" placeholder="English value" />
-      <label>中文 (ZH)</label>
+      <label id="editItemZhLabel">中文 (ZH)</label>
       <input type="text" id="editItemZh" placeholder="中文值" />
     </div>
     <div class="modal-actions">
-      <button class="btn btn-sm" onclick="hideModal('editItemModal')">取消</button>
-      <button class="btn btn-sm btn-primary" onclick="confirmEditItem()">儲存</button>
+      <button class="btn btn-sm" id="editCancelBtn" onclick="hideModal('editItemModal')">取消</button>
+      <button class="btn btn-sm btn-primary" id="editSaveBtn" onclick="confirmEditItem()">儲存</button>
     </div>
   </div>
 </div>
@@ -683,11 +690,131 @@ body {
 <script>
 // ============ CONSTANTS ============
 const STORAGE_KEY = 'ai_prompt_gen_v3';
+const UI_LANG_KEY = 'ai_prompt_gen_ui_lang';
+const DISPLAY_LANG_KEY = 'ai_prompt_gen_display_lang';
+const OUTPUT_LANG_KEY = 'ai_prompt_gen_output_lang';
 
+const TEXT = {
+  zh: {
+    pageTitle: 'AI 繪圖提示詞產生器',
+    appTitle: '🎨 AI 繪圖提示詞產生器',
+    appSubtitle: '自訂分類與選項，快速組合高品質 Prompt，一鍵送往 ChatGPT / Gemini 生圖',
+    uiLangLabel: '介面語言：',
+    subjectLabel: '📌 主題：',
+    subjectPlaceholder: '例如：一隻穿著太空裝的柯基犬站在月球上',
+    categorySectionTitle: '提示詞分類',
+    displayLangLabel: '介面顯示：',
+    outputLangLabel: '輸出語言：',
+    chinese: '中文',
+    bilingual: '雙語',
+    generate: '✨ 產生提示詞',
+    random: '🎲 隨機組合',
+    outputLabel: '📝 產生結果',
+    copy: '📋 複製',
+    gpt: '🚀 GPT 生圖',
+    gemini: '💎 Gemini 生圖',
+    storageNotice: '⚠️ 資料儲存於瀏覽器 localStorage，清除瀏覽器資料會遺失。',
+    export: '💾 匯出',
+    import: '📂 匯入',
+    reset: '🗑️ 一鍵清除',
+    resetTitle: '⚠️ 確認清除所有資料？',
+    resetBody: '此操作將刪除所有自訂分類、選項與選取記錄，且無法復原。建議先匯出備份。',
+    cancel: '取消',
+    confirmReset: '確認清除',
+    editItemTitle: '✏️ 編輯選項',
+    save: '儲存',
+    renameTitle: '重新命名',
+    deleteTitle: '刪除分類',
+    addCategory: '新增分類',
+    categoryEnPlaceholder: 'e.g. 🖼️ Background',
+    categoryZhPlaceholder: '例如：🖼️ 背景場景',
+    enFieldLabel: '英文 (EN)',
+    zhFieldLabel: '中文 (ZH)',
+    zhValuePlaceholder: '中文值',
+    zhFieldShort: '中文',
+    create: '建立',
+    selectedPrefix: '已選取',
+    duplicateItem: '⚠️ 此選項已存在',
+    addedItem: '✅ 已新增：',
+    addedCategory: '✅ 已新增分類：',
+    deleteConfirm: name => `確定刪除「${name}」？`,
+    categoryDeleted: '🗑️ 分類已刪除',
+    promptEnName: '英文名稱：',
+    promptZhName: '中文名稱：',
+    needInput: '⚠️ 請輸入主題或至少選取一個標籤',
+    generated: '✨ 提示詞已產生！',
+    copied: '📋 已複製到剪貼簿！',
+    needPrompt: '⚠️ 請先產生提示詞',
+    exported: '💾 已匯出設定檔',
+    imported: '📂 已匯入設定！',
+    badFile: '⚠️ 檔案格式不正確',
+    parseFail: '⚠️ 無法解析檔案',
+    resetDone: '🗑️ 已清除所有記錄，恢復預設值'
+  },
+  en: {
+    pageTitle: 'AI Image Prompt Generator',
+    appTitle: '🎨 AI Image Prompt Generator',
+    appSubtitle: 'Customize categories and options, build high-quality prompts fast, then send them to ChatGPT or Gemini.',
+    uiLangLabel: 'Interface language:',
+    subjectLabel: '📌 Subject:',
+    subjectPlaceholder: 'Example: a corgi in a spacesuit standing on the moon',
+    categorySectionTitle: 'Prompt Categories',
+    displayLangLabel: 'Option labels:',
+    outputLangLabel: 'Output language:',
+    chinese: 'ZH',
+    bilingual: 'Both',
+    generate: '✨ Generate Prompt',
+    random: '🎲 Random Mix',
+    outputLabel: '📝 Result',
+    copy: '📋 Copy',
+    gpt: '🚀 GPT Image',
+    gemini: '💎 Gemini Image',
+    storageNotice: '⚠️ Data is stored in browser localStorage. Clearing browser data will remove it.',
+    export: '💾 Export',
+    import: '📂 Import',
+    reset: '🗑️ Clear All',
+    resetTitle: '⚠️ Clear all data?',
+    resetBody: 'This will delete all custom categories, options, and selections. It cannot be undone. Export a backup first if needed.',
+    cancel: 'Cancel',
+    confirmReset: 'Clear All',
+    editItemTitle: '✏️ Edit Option',
+    save: 'Save',
+    renameTitle: 'Rename',
+    deleteTitle: 'Delete category',
+    addCategory: 'Add Category',
+    categoryEnPlaceholder: 'e.g. 🖼️ Background',
+    categoryZhPlaceholder: 'Example: 🖼️ 背景場景',
+    enFieldLabel: 'English (EN)',
+    zhFieldLabel: 'Chinese (ZH)',
+    zhValuePlaceholder: 'Chinese value',
+    zhFieldShort: 'ZH',
+    create: 'Create',
+    selectedPrefix: 'Selected',
+    duplicateItem: '⚠️ This option already exists',
+    addedItem: '✅ Added: ',
+    addedCategory: '✅ Category added: ',
+    deleteConfirm: name => `Delete "${name}"?`,
+    categoryDeleted: '🗑️ Category deleted',
+    promptEnName: 'English name:',
+    promptZhName: 'Chinese name:',
+    needInput: '⚠️ Enter a subject or select at least one tag',
+    generated: '✨ Prompt generated!',
+    copied: '📋 Copied to clipboard!',
+    needPrompt: '⚠️ Generate a prompt first',
+    exported: '💾 Settings exported',
+    imported: '📂 Settings imported!',
+    badFile: '⚠️ Invalid file format',
+    parseFail: '⚠️ Could not parse file',
+    resetDone: '🗑️ All records cleared and defaults restored'
+  }
+};
+
+// UI lang: 'zh' | 'en'
+let uiLang = localStorage.getItem(UI_LANG_KEY) || 'zh';
 // Display lang: 'zh' | 'en' | 'both'
-let displayLang = 'zh';
+let displayLang = localStorage.getItem(DISPLAY_LANG_KEY) || 'zh';
 // Output lang: 'en' | 'zh'
-let outputLang = 'en';
+let outputLang = localStorage.getItem(OUTPUT_LANG_KEY) || 'en';
 // Edit state
 let editingCatIdx = null;
 let editingItemIdx = null;
@@ -831,6 +958,62 @@ function saveData() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+function t(key, ...args) {
+  const value = TEXT[uiLang][key] || TEXT.zh[key] || key;
+  return typeof value === 'function' ? value(...args) : value;
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function applyUiText() {
+  document.documentElement.lang = uiLang === 'en' ? 'en' : 'zh-TW';
+  document.title = t('pageTitle');
+  setText('uiLangLabel', t('uiLangLabel'));
+  setText('appTitle', t('appTitle'));
+  setText('appSubtitle', t('appSubtitle'));
+  setText('subjectLabel', t('subjectLabel'));
+  document.getElementById('subjectInput').placeholder = t('subjectPlaceholder');
+  setText('categorySectionTitle', t('categorySectionTitle'));
+  setText('displayLangLabel', t('displayLangLabel'));
+  setText('outputLangLabel', t('outputLangLabel'));
+  setText('displayBothBtn', t('bilingual'));
+  document.querySelectorAll('#displayLangToggle button[data-lang="zh"], #outputLangToggle button[data-lang="zh"]').forEach(btn => {
+    btn.textContent = t('chinese');
+  });
+  setText('generateBtn', t('generate'));
+  setText('randomBtn', t('random'));
+  setText('outputLabel', t('outputLabel'));
+  setText('copyBtn', t('copy'));
+  setText('gptBtn', t('gpt'));
+  setText('geminiBtn', t('gemini'));
+  setText('storageNotice', t('storageNotice'));
+  setText('exportBtn', t('export'));
+  setText('importBtn', t('import'));
+  setText('resetBtn', t('reset'));
+  setText('resetModalTitle', t('resetTitle'));
+  setText('resetModalBody', t('resetBody'));
+  setText('resetCancelBtn', t('cancel'));
+  setText('resetConfirmBtn', t('confirmReset'));
+  setText('editItemTitle', t('editItemTitle'));
+  setText('editItemEnLabel', t('enFieldLabel'));
+  setText('editItemZhLabel', t('zhFieldLabel'));
+  document.getElementById('editItemZh').placeholder = t('zhValuePlaceholder');
+  setText('editCancelBtn', t('cancel'));
+  setText('editSaveBtn', t('save'));
+  document.querySelectorAll('#uiLangToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === uiLang);
+  });
+  document.querySelectorAll('#displayLangToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === displayLang);
+  });
+  document.querySelectorAll('#outputLangToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === outputLang);
+  });
+}
+
 // ============ DISPLAY HELPERS ============
 function getItemDisplay(item) {
   if (displayLang === 'en') return item.en;
@@ -852,6 +1035,7 @@ function getItemOutput(item) {
 
 // ============ RENDER ============
 function render() {
+  applyUiText();
   const grid = document.getElementById('categoriesGrid');
   grid.innerHTML = '';
 
@@ -865,8 +1049,8 @@ function render() {
       <div class="category-header">
         <div class="category-name">${getCatName(cat)}</div>
         <div class="category-actions">
-          <button class="btn btn-icon btn-sm" onclick="editCategoryName(${ci})" title="重新命名">✏️</button>
-          <button class="btn btn-icon btn-sm btn-danger" onclick="deleteCategory(${ci})" title="刪除分類">✕</button>
+          <button class="btn btn-icon btn-sm" onclick="editCategoryName(${ci})" title="${t('renameTitle')}">✏️</button>
+          <button class="btn btn-icon btn-sm btn-danger" onclick="deleteCategory(${ci})" title="${t('deleteTitle')}">✕</button>
         </div>
       </div>
       <div class="tags-container">
@@ -881,7 +1065,7 @@ function render() {
       <div class="add-item-row">
         <input type="text" placeholder="EN" id="newItemEn-${cat.id}"
           onkeydown="if(event.key==='Enter'){document.getElementById('newItemZh-${cat.id}').focus()}" style="flex:1;" />
-        <input type="text" placeholder="中文" id="newItemZh-${cat.id}"
+        <input type="text" placeholder="${t('zhFieldShort')}" id="newItemZh-${cat.id}"
           onkeydown="if(event.key==='Enter')addItem(${ci})" style="flex:1;" />
         <button class="btn btn-sm btn-primary" onclick="addItem(${ci})">+</button>
       </div>
@@ -894,7 +1078,7 @@ function render() {
   addCard.className = 'add-category-card';
   addCard.id = 'addCategoryCard';
   addCard.onclick = () => showAddCategoryForm();
-  addCard.innerHTML = `<span class="plus">+</span><span>新增分類</span>`;
+  addCard.innerHTML = `<span class="plus">+</span><span>${t('addCategory')}</span>`;
   grid.appendChild(addCard);
 
   renderSummary();
@@ -920,13 +1104,20 @@ function renderSummary() {
   }
 
   el.style.display = 'block';
-  el.innerHTML = `<strong>已選取 (${chips.length})：</strong> ` +
+  el.innerHTML = `<strong>${t('selectedPrefix')} (${chips.length}):</strong> ` +
     chips.map(c => `<span class="selected-chip" onclick="toggleTag('${c.catId}', ${c.ii})">${c.label} <span class="chip-x">✕</span></span>`).join('');
 }
 
 // ============ LANG TOGGLES ============
+function setUiLang(lang) {
+  uiLang = lang;
+  localStorage.setItem(UI_LANG_KEY, lang);
+  render();
+}
+
 function setDisplayLang(lang) {
   displayLang = lang;
+  localStorage.setItem(DISPLAY_LANG_KEY, lang);
   document.querySelectorAll('#displayLangToggle button').forEach(b => {
     b.classList.toggle('active', b.dataset.lang === lang);
   });
@@ -935,6 +1126,7 @@ function setDisplayLang(lang) {
 
 function setOutputLang(lang) {
   outputLang = lang;
+  localStorage.setItem(OUTPUT_LANG_KEY, lang);
   document.querySelectorAll('#outputLangToggle button').forEach(b => {
     b.classList.toggle('active', b.dataset.lang === lang);
   });
@@ -965,14 +1157,14 @@ function addItem(ci) {
   // Check duplicate
   const dup = cat.items.find(item => (en && item.en === en) || (zh && item.zh === zh));
   if (dup) {
-    toast('⚠️ 此選項已存在');
+    toast(t('duplicateItem'));
     return;
   }
 
   cat.items.push({ en: en || zh, zh: zh || en });
   saveData();
   render();
-  toast('✅ 已新增：' + (zh || en));
+  toast(t('addedItem') + (zh || en));
 }
 
 function removeItem(ci, ii) {
@@ -996,16 +1188,16 @@ function showAddCategoryForm() {
   card.innerHTML = `
     <div class="form-row">
       <label>EN</label>
-      <input type="text" placeholder="e.g. 🖼️ Background" id="newCatEn" />
+      <input type="text" placeholder="${t('categoryEnPlaceholder')}" id="newCatEn" />
     </div>
     <div class="form-row">
-      <label>中文</label>
-      <input type="text" placeholder="例如：🖼️ 背景場景" id="newCatZh"
+      <label>${t('zhFieldShort')}</label>
+      <input type="text" placeholder="${t('categoryZhPlaceholder')}" id="newCatZh"
         onkeydown="if(event.key==='Enter')confirmAddCategory()" />
     </div>
     <div class="form-actions">
-      <button class="btn btn-sm" onclick="render()">取消</button>
-      <button class="btn btn-sm btn-primary" onclick="confirmAddCategory()">建立</button>
+      <button class="btn btn-sm" onclick="render()">${t('cancel')}</button>
+      <button class="btn btn-sm btn-primary" onclick="confirmAddCategory()">${t('create')}</button>
     </div>
   `;
   document.getElementById('newCatEn').focus();
@@ -1023,24 +1215,24 @@ function confirmAddCategory() {
   });
   saveData();
   render();
-  toast('✅ 已新增分類：' + (zh || en));
+  toast(t('addedCategory') + (zh || en));
 }
 
 function deleteCategory(ci) {
-  if (!confirm(`確定刪除「${getCatName(data.categories[ci])}」？`)) return;
+  if (!confirm(t('deleteConfirm', getCatName(data.categories[ci])))) return;
   const catId = data.categories[ci].id;
   delete data.selections[catId];
   data.categories.splice(ci, 1);
   saveData();
   render();
-  toast('🗑️ 分類已刪除');
+  toast(t('categoryDeleted'));
 }
 
 function editCategoryName(ci) {
   const cat = data.categories[ci];
-  const newEn = prompt('英文名稱：', cat.name.en);
+  const newEn = prompt(t('promptEnName'), cat.name.en);
   if (newEn === null) return;
-  const newZh = prompt('中文名稱：', cat.name.zh);
+  const newZh = prompt(t('promptZhName'), cat.name.zh);
   if (newZh === null) return;
   if (newEn.trim()) cat.name.en = newEn.trim();
   if (newZh.trim()) cat.name.zh = newZh.trim();
@@ -1064,7 +1256,7 @@ function generatePrompt() {
   });
 
   if (parts.length === 0) {
-    toast('⚠️ 請輸入主題或至少選取一個標籤');
+    toast(t('needInput'));
     return;
   }
 
@@ -1072,7 +1264,7 @@ function generatePrompt() {
   document.getElementById('outputArea').style.display = 'block';
   document.getElementById('outputText').value = result;
   document.getElementById('outputArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  toast('✨ 提示詞已產生！');
+  toast(t('generated'));
 }
 
 // ============ RANDOM ============
@@ -1096,18 +1288,18 @@ function copyPrompt() {
   const text = document.getElementById('outputText').value;
   if (!text) return;
   navigator.clipboard.writeText(text).then(() => {
-    toast('📋 已複製到剪貼簿！');
+    toast(t('copied'));
   }).catch(() => {
     const ta = document.getElementById('outputText');
     ta.select();
     document.execCommand('copy');
-    toast('📋 已複製到剪貼簿！');
+    toast(t('copied'));
   });
 }
 
 function sendToGPT() {
   const text = document.getElementById('outputText').value;
-  if (!text) { toast('⚠️ 請先產生提示詞'); return; }
+  if (!text) { toast(t('needPrompt')); return; }
   const msg = outputLang === 'en'
     ? 'Please generate an image: ' + text
     : '請根據以下描述生成圖片：' + text;
@@ -1116,7 +1308,7 @@ function sendToGPT() {
 
 function sendToGemini() {
   const text = document.getElementById('outputText').value;
-  if (!text) { toast('⚠️ 請先產生提示詞'); return; }
+  if (!text) { toast(t('needPrompt')); return; }
   const msg = outputLang === 'en'
     ? 'Generate an image: ' + text
     : '請根據以下描述生成圖片：' + text;
@@ -1132,7 +1324,7 @@ function exportData() {
   a.download = 'prompt-generator-backup.json';
   a.click();
   URL.revokeObjectURL(url);
-  toast('💾 已匯出設定檔');
+  toast(t('exported'));
 }
 
 function importData(event) {
@@ -1146,12 +1338,12 @@ function importData(event) {
         data = imported;
         saveData();
         render();
-        toast('📂 已匯入設定！');
+        toast(t('imported'));
       } else {
-        toast('⚠️ 檔案格式不正確');
+        toast(t('badFile'));
       }
     } catch (err) {
-      toast('⚠️ 無法解析檔案');
+      toast(t('parseFail'));
     }
   };
   reader.readAsText(file);
@@ -1170,7 +1362,7 @@ function resetAll() {
   hideModal('resetModal');
   document.getElementById('outputArea').style.display = 'none';
   document.getElementById('subjectInput').value = '';
-  toast('🗑️ 已清除所有記錄，恢復預設值');
+  toast(t('resetDone'));
 }
 
 // ============ TOAST ============
