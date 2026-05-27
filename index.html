@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 繪圖提示詞產生器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg-primary: #0a0e14;
+  --bg-secondary: #0f1520;
+  --bg-card: #151d2a;
+  --bg-card-hover: #1c2638;
+  --bg-input: #0f1520;
+  --border: #243044;
+  --border-focus: #1a7ad4;
+  --text-primary: #e8ecf2;
+  --text-secondary: #8a9cb2;
+  --text-muted: #5a6a7a8a;
+  --accent: #1a7ad4;
+  --accent-glow: #1a7ad440;
+  --accent-2: #2ec4b6;
+  --accent-3: #1a7ad4;
+  --danger: #ef4444;
+  --danger-bg: #ef44441a;
+  --tag-bg: #1a7ad415;
+  --tag-border: #1a7ad438;
+  --shadow: 0 4px 24px rgba(0,0,0,0.5);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html { font-size: 15px; }
+body {
+  font-family: 'Noto Sans TC', sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  line-height: 1.6;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.app { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+/* Header */
+.header {
+  text-align: center;
+  padding: 2.5rem 0 2rem;
+  position: relative;
+}
+.header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+}
+.header h1 {
+  font-size: 2rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+.header p {
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+/* Sections */
+.section { margin-top: 2rem; }
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Language Toggles */
+.lang-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.lang-group .lang-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.lang-toggle {
+  display: flex;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.lang-toggle button {
+  padding: 0.3rem 0.65rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.lang-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Category Grid */
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.category-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  transition: var(--transition);
+}
+.category-card:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-focus);
+}
+.category-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.category-name {
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.category-actions { display: flex; gap: 0.3rem; }
+
+/* Tags */
+.tags-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  min-height: 32px;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  background: var(--tag-bg);
+  border: 1px solid var(--tag-border);
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: var(--transition);
+  user-select: none;
+  position: relative;
+}
+.tag:hover {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.tag.selected {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+.tag .tag-sub {
+  font-size: 0.68rem;
+  opacity: 0.6;
+  margin-left: 0.15rem;
+}
+.tag .remove {
+  font-size: 0.7rem;
+  opacity: 0;
+  margin-left: 0.15rem;
+  transition: var(--transition);
+}
+.tag:hover .remove { opacity: 0.7; }
+
+/* Add Item */
+.add-item-row {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+.add-item-row input {
+  flex: 1;
+  min-width: 80px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.35rem 0.55rem;
+  color: var(--text-primary);
+  font-size: 0.8rem;
+  font-family: inherit;
+  outline: none;
+  transition: var(--transition);
+}
+.add-item-row input:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.add-item-row input::placeholder { color: var(--text-muted); }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: var(--transition);
+  white-space: nowrap;
+}
+.btn:hover { background: var(--bg-card-hover); border-color: var(--border-focus); }
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.78rem; }
+.btn-icon { padding: 0.3rem 0.45rem; font-size: 0.85rem; }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+.btn-primary:hover { background: #1568b8; }
+.btn-danger { color: var(--danger); border-color: var(--danger); background: var(--danger-bg); }
+.btn-danger:hover { background: var(--danger); color: #fff; }
+.btn-gpt {
+  background: linear-gradient(135deg, #10a37f, #0d8c6d);
+  border-color: #10a37f;
+  color: #fff;
+  font-weight: 600;
+}
+.btn-gpt:hover { opacity: 0.9; }
+.btn-gemini {
+  background: linear-gradient(135deg, #4285f4, #6c5ce7);
+  border-color: #4285f4;
+  color: #fff;
+  font-weight: 600;
+}
+.btn-gemini:hover { opacity: 0.9; }
+
+/* Add Category Card */
+.add-category-card {
+  background: var(--bg-card);
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  transition: var(--transition);
+  min-height: 140px;
+}
+.add-category-card:hover { border-color: var(--accent); background: var(--bg-card-hover); }
+.add-category-card .plus { font-size: 2rem; color: var(--text-secondary); line-height: 1; }
+.add-category-card span { color: var(--text-secondary); font-size: 0.85rem; }
+
+/* Add Category Form */
+.add-category-form {
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+.add-category-form .form-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.add-category-form .form-row label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  min-width: 55px;
+  display: flex;
+  align-items: center;
+}
+.add-category-form input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: inherit;
+  outline: none;
+  transition: var(--transition);
+}
+.add-category-form input:focus { border-color: var(--border-focus); }
+.add-category-form .form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.6rem;
+}
+
+/* Subject */
+.subject-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+.subject-row label { font-weight: 700; font-size: 0.95rem; white-space: nowrap; }
+.subject-row input {
+  flex: 1;
+  min-width: 200px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.8rem;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: var(--transition);
+}
+.subject-row input:focus { border-color: var(--border-focus); box-shadow: 0 0 0 3px var(--accent-glow); }
+
+/* Generate */
+.generate-area {
+  margin-top: 1.5rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+.btn-generate {
+  padding: 0.7rem 2rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 30px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+.btn-generate:hover { transform: translateY(-2px); box-shadow: 0 8px 30px var(--accent-glow); }
+.btn-random {
+  padding: 0.7rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.btn-random:hover { transform: translateY(-2px); }
+
+/* Output */
+.output-area {
+  margin-top: 2rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.output-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1rem;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.output-toolbar-left { display: flex; align-items: center; gap: 0.5rem; }
+.output-toolbar-right { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.output-label { font-weight: 700; font-size: 0.9rem; }
+.output-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.88rem;
+  line-height: 1.7;
+  resize: vertical;
+  outline: none;
+}
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  padding: 0.7rem 1.5rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 30px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  box-shadow: 0 8px 30px rgba(26,122,212,0.4);
+  opacity: 0;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Danger Zone */
+.danger-zone {
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+}
+.danger-zone p { color: var(--text-secondary); font-size: 0.85rem; }
+
+/* Modal */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 900;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: var(--shadow);
+}
+.modal h3 { font-size: 1.1rem; margin-bottom: 0.8rem; color: var(--danger); }
+.modal p { color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 1.2rem; line-height: 1.6; }
+.modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+
+/* Edit item modal */
+.edit-modal-fields { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+.edit-modal-fields label { font-size: 0.82rem; color: var(--text-secondary); }
+.edit-modal-fields input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.45rem 0.65rem;
+  color: var(--text-primary);
+  font-size: 0.88rem;
+  font-family: inherit;
+  outline: none;
+}
+.edit-modal-fields input:focus { border-color: var(--border-focus); }
+
+/* Selected summary */
+.selected-summary {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+.selected-summary strong { color: var(--text-primary); }
+.selected-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.5rem;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  margin: 0.1rem 0.15rem;
+  cursor: pointer;
+}
+.selected-chip:hover { opacity: 0.8; }
+.selected-chip .chip-x { font-size: 0.65rem; opacity: 0.7; }
+
+/* Footer */
+.footer {
+  margin-top: 2rem;
+  padding: 1.5rem 0;
+  border-top: 1px solid var(--border);
+  text-align: center;
+}
+.footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+.footer-copyright {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+.footer-copyright a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+  transition: var(--transition);
+}
+.footer-copyright a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+.footer-divider {
+  display: inline-block;
+  margin: 0 0.5rem;
+  color: var(--border);
+}
+
+@media (max-width: 640px) {
+  .app { padding: 1rem; }
+  .header h1 { font-size: 1.5rem; }
+  .categories-grid { grid-template-columns: 1fr; }
+  .output-toolbar { flex-direction: column; align-items: flex-start; }
+  .output-toolbar-right { width: 100%; justify-content: flex-end; }
+  .add-item-row { flex-wrap: nowrap; }
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="header">
+    <h1>🎨 AI 繪圖提示詞產生器</h1>
+    <p>自訂分類與選項，快速組合高品質 Prompt，一鍵送往 ChatGPT / Gemini 生圖</p>
+  </div>
+
+  <!-- Subject -->
+  <div class="subject-row">
+    <label>📌 主題：</label>
+    <input type="text" id="subjectInput" placeholder="例如：一隻穿著太空裝的柯基犬站在月球上" />
+  </div>
+
+  <!-- Categories -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title"><span class="icon">🧩</span> 提示詞分類</div>
+      <div class="lang-group">
+        <span class="lang-label">介面顯示：</span>
+        <div class="lang-toggle" id="displayLangToggle">
+          <button data-lang="zh" class="active" onclick="setDisplayLang('zh')">中文</button>
+          <button data-lang="en" onclick="setDisplayLang('en')">EN</button>
+          <button data-lang="both" onclick="setDisplayLang('both')">雙語</button>
+        </div>
+        <span class="lang-label" style="margin-left:0.4rem;">輸出語言：</span>
+        <div class="lang-toggle" id="outputLangToggle">
+          <button data-lang="en" class="active" onclick="setOutputLang('en')">EN</button>
+          <button data-lang="zh" onclick="setOutputLang('zh')">中文</button>
+        </div>
+      </div>
+    </div>
+    <div class="categories-grid" id="categoriesGrid"></div>
+  </div>
+
+  <!-- Selected Summary -->
+  <div class="selected-summary" id="selectedSummary" style="display:none;"></div>
+
+  <!-- Generate -->
+  <div class="generate-area">
+    <button class="btn-generate" onclick="generatePrompt()">✨ 產生提示詞</button>
+    <button class="btn-random" onclick="randomPick()">🎲 隨機組合</button>
+  </div>
+
+  <!-- Output -->
+  <div class="output-area" id="outputArea" style="display:none;">
+    <div class="output-toolbar">
+      <div class="output-toolbar-left">
+        <span class="output-label">📝 產生結果</span>
+      </div>
+      <div class="output-toolbar-right">
+        <button class="btn btn-sm" onclick="copyPrompt()">📋 複製</button>
+        <button class="btn btn-sm btn-gpt" onclick="sendToGPT()">🚀 GPT 生圖</button>
+        <button class="btn btn-sm btn-gemini" onclick="sendToGemini()">💎 Gemini 生圖</button>
+      </div>
+    </div>
+    <textarea class="output-textarea" id="outputText"></textarea>
+  </div>
+
+  <!-- Danger Zone -->
+  <div class="danger-zone">
+    <p>⚠️ 資料儲存於瀏覽器 localStorage，清除瀏覽器資料會遺失。</p>
+    <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+      <button class="btn btn-sm" onclick="exportData()">💾 匯出</button>
+      <button class="btn btn-sm" onclick="document.getElementById('importFile').click()">📂 匯入</button>
+      <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+      <button class="btn btn-sm btn-danger" onclick="showResetModal()">🗑️ 一鍵清除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="footer-copyright">
+      Copyright &copy; 2026
+      <a href="https://www.facebook.com/profile.php?id=100057587553627" target="_blank" rel="noopener noreferrer">民興自動控制行</a>
+      <span class="footer-divider">|</span>
+      <a href="https://halfmemo.com/" target="_blank" rel="noopener noreferrer">半桶水的AI筆記</a>
+    </p>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<!-- Reset Modal -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <h3>⚠️ 確認清除所有資料？</h3>
+    <p>此操作將刪除所有自訂分類、選項與選取記錄，且無法復原。建議先匯出備份。</p>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="hideModal('resetModal')">取消</button>
+      <button class="btn btn-sm btn-danger" onclick="resetAll()">確認清除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Item Modal -->
+<div class="modal-overlay" id="editItemModal">
+  <div class="modal">
+    <h3 style="color:var(--accent);">✏️ 編輯選項</h3>
+    <div class="edit-modal-fields">
+      <label>英文 (EN)</label>
+      <input type="text" id="editItemEn" placeholder="English value" />
+      <label>中文 (ZH)</label>
+      <input type="text" id="editItemZh" placeholder="中文值" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="hideModal('editItemModal')">取消</button>
+      <button class="btn btn-sm btn-primary" onclick="confirmEditItem()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ CONSTANTS ============
+const STORAGE_KEY = 'ai_prompt_gen_v3';
+
+// Display lang: 'zh' | 'en' | 'both'
+let displayLang = 'zh';
+// Output lang: 'en' | 'zh'
+let outputLang = 'en';
+// Edit state
+let editingCatIdx = null;
+let editingItemIdx = null;
+
+// ============ DEFAULT DATA ============
+// Each item is { en: '...', zh: '...' }
+const DEFAULT_DATA = {
+  categories: [
+    {
+      id: 'style',
+      name: { en: '🎨 Art Style', zh: '🎨 藝術風格' },
+      items: [
+        { en: 'Photorealistic', zh: '寫實攝影' },
+        { en: 'Oil Painting', zh: '油畫' },
+        { en: 'Watercolor', zh: '水彩' },
+        { en: 'Anime', zh: '動漫' },
+        { en: 'Pixel Art', zh: '像素藝術' },
+        { en: 'Low Poly', zh: '低多邊形' },
+        { en: 'Cyberpunk', zh: '賽博龐克' },
+        { en: 'Art Nouveau', zh: '新藝術風格' },
+        { en: 'Impressionist', zh: '印象派' },
+        { en: 'Pop Art', zh: '普普藝術' },
+        { en: 'Sketch', zh: '素描' },
+        { en: 'Flat Design', zh: '扁平設計' },
+        { en: 'Isometric', zh: '等距視角' },
+        { en: '3D Render', zh: '3D 渲染' },
+        { en: 'Ukiyo-e', zh: '浮世繪' },
+      ]
+    },
+    {
+      id: 'lighting',
+      name: { en: '💡 Lighting', zh: '💡 光線效果' },
+      items: [
+        { en: 'Golden Hour', zh: '黃金時刻' },
+        { en: 'Studio Lighting', zh: '攝影棚燈光' },
+        { en: 'Neon Glow', zh: '霓虹光' },
+        { en: 'Dramatic Shadow', zh: '戲劇性陰影' },
+        { en: 'Backlit', zh: '逆光' },
+        { en: 'Soft Diffused', zh: '柔和散射光' },
+        { en: 'Cinematic Lighting', zh: '電影感打光' },
+        { en: 'Moonlight', zh: '月光' },
+        { en: 'Rim Light', zh: '輪廓光' },
+        { en: 'Volumetric Light', zh: '體積光' },
+      ]
+    },
+    {
+      id: 'composition',
+      name: { en: '📐 Composition', zh: '📐 構圖角度' },
+      items: [
+        { en: 'Close-up', zh: '特寫' },
+        { en: 'Wide Angle', zh: '廣角' },
+        { en: "Bird's Eye View", zh: '鳥瞰' },
+        { en: 'Low Angle', zh: '仰角' },
+        { en: 'Dutch Angle', zh: '傾斜構圖' },
+        { en: 'Symmetrical', zh: '對稱構圖' },
+        { en: 'Rule of Thirds', zh: '三分法' },
+        { en: 'Centered', zh: '居中構圖' },
+        { en: 'Macro Shot', zh: '微距' },
+        { en: 'Panoramic', zh: '全景' },
+      ]
+    },
+    {
+      id: 'mood',
+      name: { en: '🌈 Mood', zh: '🌈 氛圍情緒' },
+      items: [
+        { en: 'Dreamy', zh: '夢幻' },
+        { en: 'Dark & Moody', zh: '暗黑情緒' },
+        { en: 'Vibrant', zh: '鮮豔活力' },
+        { en: 'Serene', zh: '寧靜' },
+        { en: 'Mysterious', zh: '神秘' },
+        { en: 'Energetic', zh: '充滿活力' },
+        { en: 'Nostalgic', zh: '復古懷舊' },
+        { en: 'Futuristic', zh: '未來感' },
+        { en: 'Ethereal', zh: '空靈' },
+        { en: 'Whimsical', zh: '奇幻俏皮' },
+      ]
+    },
+    {
+      id: 'quality',
+      name: { en: '✨ Quality', zh: '✨ 品質修飾' },
+      items: [
+        { en: '8K UHD', zh: '8K 超高清' },
+        { en: 'Highly Detailed', zh: '高度細節' },
+        { en: 'Sharp Focus', zh: '銳利對焦' },
+        { en: 'Intricate Details', zh: '精細細節' },
+        { en: 'Professional', zh: '專業級' },
+        { en: 'Award Winning', zh: '得獎等級' },
+        { en: 'Masterpiece', zh: '傑作' },
+        { en: 'Best Quality', zh: '最佳品質' },
+        { en: 'Ultra Realistic', zh: '超寫實' },
+        { en: 'Octane Render', zh: 'Octane 渲染' },
+      ]
+    },
+    {
+      id: 'color',
+      name: { en: '🎭 Color Tone', zh: '🎭 色彩色調' },
+      items: [
+        { en: 'Pastel Colors', zh: '粉彩色系' },
+        { en: 'Monochrome', zh: '單色' },
+        { en: 'Warm Tones', zh: '暖色調' },
+        { en: 'Cool Tones', zh: '冷色調' },
+        { en: 'High Contrast', zh: '高對比' },
+        { en: 'Muted Colors', zh: '低飽和' },
+        { en: 'Vivid Saturated', zh: '鮮豔飽和' },
+        { en: 'Earth Tones', zh: '大地色' },
+        { en: 'Gradient', zh: '漸層色' },
+        { en: 'Duotone', zh: '雙色調' },
+      ]
+    }
+  ],
+  selections: {} // { catId: [itemIndex, ...] }
+};
+
+// ============ STATE ============
+let data = loadData();
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migration: if items are strings, convert to {en, zh}
+      if (parsed.categories) {
+        parsed.categories.forEach(cat => {
+          if (typeof cat.name === 'string') {
+            cat.name = { en: cat.name, zh: cat.name };
+          }
+          cat.items = cat.items.map(item => {
+            if (typeof item === 'string') return { en: item, zh: item };
+            return item;
+          });
+        });
+      }
+      return parsed;
+    }
+  } catch (e) {}
+  return JSON.parse(JSON.stringify(DEFAULT_DATA));
+}
+
+function saveData() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+// ============ DISPLAY HELPERS ============
+function getItemDisplay(item) {
+  if (displayLang === 'en') return item.en;
+  if (displayLang === 'zh') return item.zh || item.en;
+  // both
+  return item.zh ? `${item.zh}` : item.en;
+}
+function getItemSub(item) {
+  if (displayLang !== 'both') return '';
+  return item.en || '';
+}
+function getCatName(cat) {
+  if (displayLang === 'en') return cat.name.en || cat.name.zh;
+  return cat.name.zh || cat.name.en;
+}
+function getItemOutput(item) {
+  return outputLang === 'en' ? (item.en || item.zh) : (item.zh || item.en);
+}
+
+// ============ RENDER ============
+function render() {
+  const grid = document.getElementById('categoriesGrid');
+  grid.innerHTML = '';
+
+  data.categories.forEach((cat, ci) => {
+    const card = document.createElement('div');
+    card.className = 'category-card';
+
+    const selectedIndices = data.selections[cat.id] || [];
+
+    card.innerHTML = `
+      <div class="category-header">
+        <div class="category-name">${getCatName(cat)}</div>
+        <div class="category-actions">
+          <button class="btn btn-icon btn-sm" onclick="editCategoryName(${ci})" title="重新命名">✏️</button>
+          <button class="btn btn-icon btn-sm btn-danger" onclick="deleteCategory(${ci})" title="刪除分類">✕</button>
+        </div>
+      </div>
+      <div class="tags-container">
+        ${cat.items.map((item, ii) => {
+          const sel = selectedIndices.includes(ii);
+          const sub = getItemSub(item);
+          return `<span class="tag ${sel ? 'selected' : ''}" onclick="toggleTag('${cat.id}', ${ii})">
+            ${getItemDisplay(item)}${sub ? `<span class="tag-sub">${sub}</span>` : ''}<span class="remove" onclick="event.stopPropagation(); removeItem(${ci}, ${ii})">✕</span>
+          </span>`;
+        }).join('')}
+      </div>
+      <div class="add-item-row">
+        <input type="text" placeholder="EN" id="newItemEn-${cat.id}"
+          onkeydown="if(event.key==='Enter'){document.getElementById('newItemZh-${cat.id}').focus()}" style="flex:1;" />
+        <input type="text" placeholder="中文" id="newItemZh-${cat.id}"
+          onkeydown="if(event.key==='Enter')addItem(${ci})" style="flex:1;" />
+        <button class="btn btn-sm btn-primary" onclick="addItem(${ci})">+</button>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Add category card
+  const addCard = document.createElement('div');
+  addCard.className = 'add-category-card';
+  addCard.id = 'addCategoryCard';
+  addCard.onclick = () => showAddCategoryForm();
+  addCard.innerHTML = `<span class="plus">+</span><span>新增分類</span>`;
+  grid.appendChild(addCard);
+
+  renderSummary();
+}
+
+function renderSummary() {
+  const el = document.getElementById('selectedSummary');
+  let chips = [];
+
+  data.categories.forEach(cat => {
+    const selectedIndices = data.selections[cat.id] || [];
+    selectedIndices.forEach(ii => {
+      const item = cat.items[ii];
+      if (item) {
+        chips.push({ catId: cat.id, ii, label: getItemDisplay(item) });
+      }
+    });
+  });
+
+  if (chips.length === 0) {
+    el.style.display = 'none';
+    return;
+  }
+
+  el.style.display = 'block';
+  el.innerHTML = `<strong>已選取 (${chips.length})：</strong> ` +
+    chips.map(c => `<span class="selected-chip" onclick="toggleTag('${c.catId}', ${c.ii})">${c.label} <span class="chip-x">✕</span></span>`).join('');
+}
+
+// ============ LANG TOGGLES ============
+function setDisplayLang(lang) {
+  displayLang = lang;
+  document.querySelectorAll('#displayLangToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+  render();
+}
+
+function setOutputLang(lang) {
+  outputLang = lang;
+  document.querySelectorAll('#outputLangToggle button').forEach(b => {
+    b.classList.toggle('active', b.dataset.lang === lang);
+  });
+}
+
+// ============ TAG ACTIONS ============
+function toggleTag(catId, ii) {
+  if (!data.selections[catId]) data.selections[catId] = [];
+  const idx = data.selections[catId].indexOf(ii);
+  if (idx >= 0) {
+    data.selections[catId].splice(idx, 1);
+  } else {
+    data.selections[catId].push(ii);
+  }
+  saveData();
+  render();
+}
+
+// ============ ITEM ACTIONS ============
+function addItem(ci) {
+  const cat = data.categories[ci];
+  const enInput = document.getElementById('newItemEn-' + cat.id);
+  const zhInput = document.getElementById('newItemZh-' + cat.id);
+  const en = enInput.value.trim();
+  const zh = zhInput.value.trim();
+  if (!en && !zh) return;
+
+  // Check duplicate
+  const dup = cat.items.find(item => (en && item.en === en) || (zh && item.zh === zh));
+  if (dup) {
+    toast('⚠️ 此選項已存在');
+    return;
+  }
+
+  cat.items.push({ en: en || zh, zh: zh || en });
+  saveData();
+  render();
+  toast('✅ 已新增：' + (zh || en));
+}
+
+function removeItem(ci, ii) {
+  const cat = data.categories[ci];
+  // Remove from selections
+  if (data.selections[cat.id]) {
+    data.selections[cat.id] = data.selections[cat.id]
+      .filter(i => i !== ii)
+      .map(i => i > ii ? i - 1 : i);
+  }
+  cat.items.splice(ii, 1);
+  saveData();
+  render();
+}
+
+// ============ CATEGORY ACTIONS ============
+function showAddCategoryForm() {
+  const card = document.getElementById('addCategoryCard');
+  card.onclick = null;
+  card.className = 'add-category-form';
+  card.innerHTML = `
+    <div class="form-row">
+      <label>EN</label>
+      <input type="text" placeholder="e.g. 🖼️ Background" id="newCatEn" />
+    </div>
+    <div class="form-row">
+      <label>中文</label>
+      <input type="text" placeholder="例如：🖼️ 背景場景" id="newCatZh"
+        onkeydown="if(event.key==='Enter')confirmAddCategory()" />
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-sm" onclick="render()">取消</button>
+      <button class="btn btn-sm btn-primary" onclick="confirmAddCategory()">建立</button>
+    </div>
+  `;
+  document.getElementById('newCatEn').focus();
+}
+
+function confirmAddCategory() {
+  const en = document.getElementById('newCatEn').value.trim();
+  const zh = document.getElementById('newCatZh').value.trim();
+  if (!en && !zh) return;
+  const id = 'custom_' + Date.now();
+  data.categories.push({
+    id,
+    name: { en: en || zh, zh: zh || en },
+    items: []
+  });
+  saveData();
+  render();
+  toast('✅ 已新增分類：' + (zh || en));
+}
+
+function deleteCategory(ci) {
+  if (!confirm(`確定刪除「${getCatName(data.categories[ci])}」？`)) return;
+  const catId = data.categories[ci].id;
+  delete data.selections[catId];
+  data.categories.splice(ci, 1);
+  saveData();
+  render();
+  toast('🗑️ 分類已刪除');
+}
+
+function editCategoryName(ci) {
+  const cat = data.categories[ci];
+  const newEn = prompt('英文名稱：', cat.name.en);
+  if (newEn === null) return;
+  const newZh = prompt('中文名稱：', cat.name.zh);
+  if (newZh === null) return;
+  if (newEn.trim()) cat.name.en = newEn.trim();
+  if (newZh.trim()) cat.name.zh = newZh.trim();
+  saveData();
+  render();
+}
+
+// ============ GENERATE ============
+function generatePrompt() {
+  const subject = document.getElementById('subjectInput').value.trim();
+  const parts = [];
+  if (subject) parts.push(subject);
+
+  data.categories.forEach(cat => {
+    const selectedIndices = data.selections[cat.id] || [];
+    const values = selectedIndices
+      .map(ii => cat.items[ii])
+      .filter(Boolean)
+      .map(item => getItemOutput(item));
+    if (values.length > 0) parts.push(values.join(', '));
+  });
+
+  if (parts.length === 0) {
+    toast('⚠️ 請輸入主題或至少選取一個標籤');
+    return;
+  }
+
+  const result = parts.join(', ');
+  document.getElementById('outputArea').style.display = 'block';
+  document.getElementById('outputText').value = result;
+  document.getElementById('outputArea').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  toast('✨ 提示詞已產生！');
+}
+
+// ============ RANDOM ============
+function randomPick() {
+  // Clear current selections
+  data.selections = {};
+  // For each category, randomly pick 1 item (if has items)
+  data.categories.forEach(cat => {
+    if (cat.items.length > 0) {
+      const ri = Math.floor(Math.random() * cat.items.length);
+      data.selections[cat.id] = [ri];
+    }
+  });
+  saveData();
+  render();
+  generatePrompt();
+}
+
+// ============ COPY & SEND ============
+function copyPrompt() {
+  const text = document.getElementById('outputText').value;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(() => {
+    toast('📋 已複製到剪貼簿！');
+  }).catch(() => {
+    const ta = document.getElementById('outputText');
+    ta.select();
+    document.execCommand('copy');
+    toast('📋 已複製到剪貼簿！');
+  });
+}
+
+function sendToGPT() {
+  const text = document.getElementById('outputText').value;
+  if (!text) { toast('⚠️ 請先產生提示詞'); return; }
+  const msg = outputLang === 'en'
+    ? 'Please generate an image: ' + text
+    : '請根據以下描述生成圖片：' + text;
+  window.open('https://chatgpt.com/?q=' + encodeURIComponent(msg), '_blank');
+}
+
+function sendToGemini() {
+  const text = document.getElementById('outputText').value;
+  if (!text) { toast('⚠️ 請先產生提示詞'); return; }
+  const msg = outputLang === 'en'
+    ? 'Generate an image: ' + text
+    : '請根據以下描述生成圖片：' + text;
+  window.open('https://gemini.google.com/app?q=' + encodeURIComponent(msg), '_blank');
+}
+
+// ============ EXPORT / IMPORT ============
+function exportData() {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'prompt-generator-backup.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('💾 已匯出設定檔');
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const imported = JSON.parse(e.target.result);
+      if (imported.categories && Array.isArray(imported.categories)) {
+        data = imported;
+        saveData();
+        render();
+        toast('📂 已匯入設定！');
+      } else {
+        toast('⚠️ 檔案格式不正確');
+      }
+    } catch (err) {
+      toast('⚠️ 無法解析檔案');
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ============ MODAL ============
+function showResetModal() { document.getElementById('resetModal').classList.add('show'); }
+function hideModal(id) { document.getElementById(id).classList.remove('show'); }
+
+function resetAll() {
+  localStorage.removeItem(STORAGE_KEY);
+  data = JSON.parse(JSON.stringify(DEFAULT_DATA));
+  saveData();
+  render();
+  hideModal('resetModal');
+  document.getElementById('outputArea').style.display = 'none';
+  document.getElementById('subjectInput').value = '';
+  toast('🗑️ 已清除所有記錄，恢復預設值');
+}
+
+// ============ TOAST ============
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._timer);
+  el._timer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+// ============ INIT ============
+render();
+</script>
+</body>
+</html>
