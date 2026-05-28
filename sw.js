@@ -1,14 +1,13 @@
 // ============ 魔咒產生器 Service Worker ============
 // 版本號：每次有重大更新時請遞增，讓舊快取自動失效
-const CACHE_NAME = 'mozhu-v1';
-const FONT_CACHE_NAME = 'mozhu-fonts-v1';
+const CACHE_NAME = 'mozhu-v2';
+const FONT_CACHE_NAME = 'mozhu-fonts-v2';
 
-// 安裝時預先快取的頁面檔案
+// 安裝時預先快取的頁面檔案（用相對路徑，相容 GitHub Pages 子目錄）
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icons/icon.svg'
+  './index.html',
+  './manifest.json',
+  './icons/icon.svg'
 ];
 
 // ---- 安裝：預快取核心頁面 ----

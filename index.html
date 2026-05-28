@@ -1606,7 +1606,7 @@ render();
 // ============ SERVICE WORKER 註冊 ============
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => {
+    navigator.serviceWorker.register('./sw.js').catch((err) => {
       console.warn('SW 註冊失敗（本機開發時正常）：', err);
     });
   });
