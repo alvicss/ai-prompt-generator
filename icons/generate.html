@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>魔咒產生器 — 產生 Icon PNG</title>
+<style>
+  body { font-family: sans-serif; background: #0a0e14; color: #e8ecf2;
+         display: flex; flex-direction: column; align-items: center;
+         padding: 2rem; gap: 1.5rem; }
+  h2 { color: #2ec4b6; margin: 0; }
+  p { color: #8a9cb2; margin: 0; text-align: center; }
+  .cards { display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center; }
+  .card { display: flex; flex-direction: column; align-items: center; gap: 0.8rem;
+          background: #151d2a; border: 1px solid #243044;
+          border-radius: 10px; padding: 1.5rem; }
+  canvas { border-radius: 12px; }
+  button {
+    padding: 0.5rem 1.2rem; background: #1a7ad4; color: white;
+    border: none; border-radius: 6px; cursor: pointer; font-size: 1rem;
+  }
+  button:hover { background: #2ec4b6; }
+  .note { font-size: 0.85rem; color: #5a6a7a; }
+</style>
+</head>
+<body>
+
+<h2>🎨 產生 Icon PNG 檔案</h2>
+<p>點擊下方按鈕，即可下載對應尺寸的 PNG 圖示。<br>
+   下載後放到 <code>icons/</code> 資料夾，替換同名檔案即可。</p>
+
+<div class="cards">
+  <div class="card">
+    <span>192 × 192 px</span>
+    <canvas id="c192" width="192" height="192"></canvas>
+    <button onclick="download('c192', 'icon-192.png')">⬇ 下載 icon-192.png</button>
+  </div>
+  <div class="card">
+    <span>512 × 512 px</span>
+    <canvas id="c512" width="512" height="512"></canvas>
+    <button onclick="download('c512', 'icon-512.png')">⬇ 下載 icon-512.png</button>
+  </div>
+</div>
+
+<p class="note">
+  想要自訂圖示？編輯同資料夾的 <code>icon.svg</code> 後重新開啟此頁面即可。<br>
+  或直接用 Figma / Photoshop 等工具製作 PNG，放入資料夾替換即可。
+</p>
+
+<script>
+  // 從 SVG 檔案讀取並繪製到 canvas
+  function drawIcon(canvasId, size) {
+    const canvas = document.getElementById(canvasId);
+    const ctx = canvas.getContext('2d');
+
+    const img = new Image();
+    img.onload = () => {
+      // 圓角裁切
+      const r = size * 0.176; // 約 90/512 的比例
+      ctx.clearRect(0, 0, size, size);
+      ctx.beginPath();
+      ctx.moveTo(r, 0);
+      ctx.lineTo(size - r, 0);
+      ctx.quadraticCurveTo(size, 0, size, r);
+      ctx.lineTo(size, size - r);
+      ctx.quadraticCurveTo(size, size, size - r, size);
+      ctx.lineTo(r, size);
+      ctx.quadraticCurveTo(0, size, 0, size - r);
+      ctx.lineTo(0, r);
+      ctx.quadraticCurveTo(0, 0, r, 0);
+      ctx.closePath();
+      ctx.clip();
+      ctx.drawImage(img, 0, 0, size, size);
+    };
+    img.onerror = () => {
+      // SVG 載入失敗時顯示提示
+      ctx.fillStyle = '#0a0e14';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#ef4444';
+      ctx.font = `${size * 0.1}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('SVG 載入失敗', size/2, size/2);
+      ctx.fillText('請確認 icon.svg 存在', size/2, size/2 + size*0.12);
+    };
+    // 載入同資料夾的 icon.svg
+    img.src = 'icon.svg';
+  }
+
+  function download(canvasId, filename) {
+    const canvas = document.getElementById(canvasId);
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  // 頁面載入後自動繪製
+  drawIcon('c192', 192);
+  drawIcon('c512', 512);
+</script>
+</body>
+</html>

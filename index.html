@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AI 繪圖提示詞產生器</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0a0e14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="魔咒">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -480,6 +486,23 @@ body {
 .modal h3 { font-size: 1.3rem; margin-bottom: 0.8rem; color: var(--danger); }
 .modal p { color: var(--text-secondary); font-size: 1.08rem; margin-bottom: 1.2rem; line-height: 1.6; }
 .modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+/* 非危險操作的 modal：藍色標題 */
+.modal.modal-info h3 { color: var(--accent); }
+/* PWA 偏好選擇按鈕 */
+.modal-choice-buttons { display: flex; flex-direction: column; gap: 0.6rem; margin-top: 0.4rem; }
+.btn-choice {
+  width: 100%; padding: 0.75rem 1rem; text-align: left;
+  background: var(--bg-input); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-primary);
+  font-size: 1rem; font-family: inherit; cursor: pointer;
+  transition: var(--transition);
+}
+.btn-choice:hover { border-color: var(--accent); background: var(--accent-glow); }
+/* 藍色確認按鈕 */
+.btn-accent {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+.btn-accent:hover { opacity: 0.85; }
 
 /* Edit item modal */
 .edit-modal-fields { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
@@ -658,6 +681,34 @@ body {
 
 <div class="toast" id="toast"></div>
 
+<!-- PWA 開啟偏好 Modal（只問一次） -->
+<div class="modal-overlay" id="pwaModal">
+  <div class="modal modal-info">
+    <h3>📱 選擇開啟方式</h3>
+    <p>之後點擊 GPT / Gemini 按鈕時，要怎麼做？<br>（只問這一次，可到設定重設）</p>
+    <div class="modal-choice-buttons">
+      <button class="btn-choice" onclick="savePWAPref('app')">
+        🚀 開啟 App 並自動複製提示詞
+      </button>
+      <button class="btn-choice" onclick="savePWAPref('copy')">
+        📋 只複製提示詞（不跳出 App）
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 視窗重用確認 Modal -->
+<div class="modal-overlay" id="reuseModal">
+  <div class="modal modal-info">
+    <h3 id="reuseTitleEl">💬 視窗已開啟</h3>
+    <p id="reuseBodyEl"></p>
+    <div class="modal-actions">
+      <button class="btn btn-sm" onclick="handleReuseChoice(false)">開新視窗</button>
+      <button class="btn btn-sm btn-accent" onclick="handleReuseChoice(true)">更新原視窗</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reset Modal -->
 <div class="modal-overlay" id="resetModal">
   <div class="modal">
@@ -744,6 +795,12 @@ const TEXT = {
     needInput: '⚠️ 請輸入主題或至少選取一個標籤',
     generated: '✨ 提示詞已產生！',
     copied: '📋 已複製到剪貼簿！',
+    geminiCopied: '📋 已複製提示詞，請在 Gemini 輸入框貼上。',
+    gptCopiedPWA: '📋 提示詞已複製，請在 ChatGPT 貼上',
+    geminiCopiedPWA: '📋 提示詞已複製，請在 Gemini 貼上',
+    reuseGPT: 'ChatGPT 視窗仍開著，是否在原視窗更新提示詞？',
+    reuseGemini: 'Gemini 視窗仍開著，是否在原視窗更新提示詞？',
+    reuseTitle: '💬 視窗已開啟',
     needPrompt: '⚠️ 請先產生提示詞',
     exported: '💾 已匯出設定檔',
     imported: '📂 已匯入設定！',
@@ -800,6 +857,12 @@ const TEXT = {
     needInput: '⚠️ Enter a subject or select at least one tag',
     generated: '✨ Prompt generated!',
     copied: '📋 Copied to clipboard!',
+    geminiCopied: '📋 Prompt copied. Paste it into Gemini.',
+    gptCopiedPWA: '📋 Prompt copied — paste it into ChatGPT',
+    geminiCopiedPWA: '📋 Prompt copied — paste it into Gemini',
+    reuseGPT: 'ChatGPT window is still open. Update it with the new prompt?',
+    reuseGemini: 'Gemini window is still open. Update it with the new prompt?',
+    reuseTitle: '💬 Window already open',
     needPrompt: '⚠️ Generate a prompt first',
     exported: '💾 Settings exported',
     imported: '📂 Settings imported!',
@@ -1297,22 +1360,185 @@ function copyPrompt() {
   });
 }
 
+// ============ PWA 偵測與偏好設定 ============
+
+// 偵測是否以獨立 App 模式執行（安裝後的 PWA）
+function isPWA() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         window.navigator.standalone === true;
+}
+
+const PWA_PREF_KEY = 'mozhu_open_pref'; // 儲存值：'app' | 'copy'
+
+// 儲存 PWA 偏好後，繼續執行原本的動作
+let _pendingPWATarget = null;
+let _pendingPWAMsg = null;
+
+function savePWAPref(pref) {
+  localStorage.setItem(PWA_PREF_KEY, pref);
+  hideModal('pwaModal');
+  // 繼續執行使用者原本點的動作
+  if (_pendingPWATarget) {
+    handlePWAOpen(_pendingPWATarget, _pendingPWAMsg, pref);
+    _pendingPWATarget = null;
+    _pendingPWAMsg = null;
+  }
+}
+
+// PWA 模式下的開啟邏輯
+function handlePWAOpen(target, msg, pref) {
+  if (pref === 'copy') {
+    // 只複製，不跳出 App
+    copyToClipboard(msg, () => {
+      toast(t(target === 'gpt' ? 'gptCopiedPWA' : 'geminiCopiedPWA'));
+    });
+    return;
+  }
+  // 'app' 模式：先複製到剪貼簿，再開啟目標網址（在 TWA 內會跳出到瀏覽器）
+  const url = target === 'gpt'
+    ? 'https://chatgpt.com/?q=' + encodeURIComponent(msg)
+    : 'https://gemini.google.com/app';
+  copyToClipboard(msg, () => {
+    toast(t(target === 'gpt' ? 'gptCopiedPWA' : 'geminiCopiedPWA'));
+    // 延遲 600ms 讓 toast 先顯示，再跳轉
+    setTimeout(() => { window.open(url, '_blank'); }, 600);
+  });
+}
+
+// ============ 視窗重用（具名視窗）============
+
+// 儲存 GPT / Gemini 的視窗引用
+let _gptWindowRef = null;
+let _geminiWindowRef = null;
+
+// 暫存等待使用者確認的資訊
+let _pendingReuseTarget = null;
+let _pendingReuseUrl = null;
+
+function showReuseModal(target, url) {
+  _pendingReuseTarget = target;
+  _pendingReuseUrl = url;
+  document.getElementById('reuseTitleEl').textContent = t('reuseTitle');
+  document.getElementById('reuseBodyEl').textContent =
+    t(target === 'gpt' ? 'reuseGPT' : 'reuseGemini');
+  document.getElementById('reuseModal').classList.add('show');
+}
+
+function handleReuseChoice(reuse) {
+  hideModal('reuseModal');
+  const target = _pendingReuseTarget;
+  const url = _pendingReuseUrl;
+  _pendingReuseTarget = null;
+  _pendingReuseUrl = null;
+
+  if (reuse) {
+    // 在原視窗更新
+    const ref = target === 'gpt' ? _gptWindowRef : _geminiWindowRef;
+    ref.location.href = url;
+    ref.focus();
+  } else {
+    // 開新視窗（丟棄舊引用）
+    const newWin = window.open(url, '_blank');
+    if (target === 'gpt') _gptWindowRef = newWin;
+    else _geminiWindowRef = newWin;
+  }
+}
+
+// 開啟具名視窗，若已存在則詢問是否更新
+function openWithReuse(target, url) {
+  const ref = target === 'gpt' ? _gptWindowRef : _geminiWindowRef;
+
+  if (ref && !ref.closed) {
+    showReuseModal(target, url);
+    return;
+  }
+
+  // Gemini 不支援 URL 帶 prompt，需要先複製再開啟
+  if (target === 'gemini') {
+    // msg 已在呼叫前複製到剪貼簿
+  }
+
+  const newWin = window.open(url, '_blank');
+  if (target === 'gpt') _gptWindowRef = newWin;
+  else _geminiWindowRef = newWin;
+}
+
+// ============ 剪貼簿工具 ============
+function copyToClipboard(text, callback) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(callback).catch(() => {
+      _fallbackCopy(text);
+      if (callback) callback();
+    });
+  } else {
+    _fallbackCopy(text);
+    if (callback) callback();
+  }
+}
+
+function _fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+}
+
+// ============ 送到 GPT / Gemini ============
+
 function sendToGPT() {
   const text = document.getElementById('outputText').value;
   if (!text) { toast(t('needPrompt')); return; }
+
   const msg = outputLang === 'en'
     ? 'Please generate an image: ' + text
     : '請根據以下描述生成圖片：' + text;
-  window.open('https://chatgpt.com/?q=' + encodeURIComponent(msg), '_blank');
+
+  if (isPWA()) {
+    // PWA 模式：看偏好（沒設定過先問一次）
+    const pref = localStorage.getItem(PWA_PREF_KEY);
+    if (!pref) {
+      _pendingPWATarget = 'gpt';
+      _pendingPWAMsg = msg;
+      document.getElementById('pwaModal').classList.add('show');
+      return;
+    }
+    handlePWAOpen('gpt', msg, pref);
+    return;
+  }
+
+  // 網頁模式：具名視窗（同 session 重複使用）
+  const url = 'https://chatgpt.com/?q=' + encodeURIComponent(msg);
+  openWithReuse('gpt', url);
 }
 
 function sendToGemini() {
   const text = document.getElementById('outputText').value;
   if (!text) { toast(t('needPrompt')); return; }
+
   const msg = outputLang === 'en'
     ? 'Generate an image: ' + text
     : '請根據以下描述生成圖片：' + text;
-  window.open('https://gemini.google.com/app?q=' + encodeURIComponent(msg), '_blank');
+
+  if (isPWA()) {
+    const pref = localStorage.getItem(PWA_PREF_KEY);
+    if (!pref) {
+      _pendingPWATarget = 'gemini';
+      _pendingPWAMsg = msg;
+      document.getElementById('pwaModal').classList.add('show');
+      return;
+    }
+    handlePWAOpen('gemini', msg, pref);
+    return;
+  }
+
+  // 網頁模式：Gemini 不支援 URL 帶 prompt，先複製再開視窗
+  copyToClipboard(msg, () => {
+    toast(t('geminiCopied'));
+    openWithReuse('gemini', 'https://gemini.google.com/app');
+  });
 }
 
 // ============ EXPORT / IMPORT ============
@@ -1376,6 +1602,15 @@ function toast(msg) {
 
 // ============ INIT ============
 render();
+
+// ============ SERVICE WORKER 註冊 ============
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => {
+      console.warn('SW 註冊失敗（本機開發時正常）：', err);
+    });
+  });
+}
 </script>
 </body>
 </html>
